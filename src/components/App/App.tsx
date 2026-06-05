@@ -8,44 +8,37 @@ import type { Movie } from '../../types/movie.ts';
 import Loader from '../Loader/Loader.tsx';
 import ErrorMessage from '../ErrorMessage/ErrorMessage.tsx';
 import MovieModal from '../MovieModal/MovieModal.tsx';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import Pagination from '../Pagination/Pagination.tsx';
 
 function App() {
   const [query, setQuery] = useState('');
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleSearch = (value: string) => {
     setQuery(value);
+    setCurrentPage(1);
   };
 
+  const {
+    data: movies = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['movies', query, currentPage],
+    queryFn: () => searchMovies(query, currentPage),
+    enabled: !!query,
+    placeholderData: keepPreviousData,
+  });
+
+  const totalPages = movies.length ?? 0;
+
   useEffect(() => {
-    if (!query) return;
-
-    const fetchMovies = async () => {
-      setMovies([]);
-      setLoading(true);
-      setError(false);
-
-      try {
-        const results = await searchMovies(query);
-
-        if (results.length === 0) {
-          toast.error('No movies found for your request.');
-          return;
-        }
-
-        setMovies(results);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMovies();
-  }, [query]);
+    if (query && !isLoading && movies.length === 0) {
+      toast.error('No movies found for your request.');
+    }
+  }, [query, isLoading, movies.length]);
 
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovie(movie); // відкриває модалку
@@ -58,11 +51,18 @@ function App() {
   return (
     <div className={css.app}>
       <SearchBar onSubmit={handleSearch} />
+      {totalPages > 1 && (
+        <Pagination
+          page={currentPage}
+          setPage={setCurrentPage}
+          totalPages={totalPages}
+        />
+      )}
 
-      {loading && <Loader />}
-      {error && <ErrorMessage />}
+      {isLoading && <Loader />}
+      {isError && <ErrorMessage />}
 
-      {!loading && !error && movies.length > 0 && (
+      {!isLoading && !isError && movies.length > 0 && (
         <MovieGrid movies={movies} onSelect={handleSelectMovie} />
       )}
 

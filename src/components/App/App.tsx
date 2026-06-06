@@ -21,24 +21,21 @@ function App() {
     setCurrentPage(1);
   };
 
-  const {
-    data: movies = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['movies', query, currentPage],
     queryFn: () => searchMovies(query, currentPage),
     enabled: !!query,
     placeholderData: keepPreviousData,
   });
 
-  const totalPages = movies.length ?? 0;
+  const movies = data?.results ?? [];
+  const totalPages = data?.total_pages ?? 0;
 
   useEffect(() => {
-    if (query && !isLoading && movies.length === 0) {
+    if (query && !isLoading && totalPages === 0) {
       toast.error('No movies found for your request.');
     }
-  }, [query, isLoading, movies.length]);
+  }, [query, isLoading, totalPages]);
 
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovie(movie); // відкриває модалку
@@ -62,7 +59,7 @@ function App() {
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
 
-      {!isLoading && !isError && movies.length > 0 && (
+      {!isLoading && !isError && totalPages > 0 && (
         <MovieGrid movies={movies} onSelect={handleSelectMovie} />
       )}
 
